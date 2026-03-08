@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || "mailto:habiat@example.com",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
-  process.env.VAPID_PRIVATE_KEY || ""
-);
+let vapidConfigured = false;
+
+function ensureVapid() {
+  if (!vapidConfigured) {
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    if (!publicKey || !privateKey) {
+      throw new Error("VAPID keys are not set in environment variables");
+    }
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || "mailto:habiat@example.com",
+      publicKey,
+      privateKey
+    );
+    vapidConfigured = true;
+  }
+}
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    ensureVapid();
+
     const { subscription, title, body, habitId, snoozeDuration, tag, image } =
       await req.json();
 
